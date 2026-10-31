@@ -2,6 +2,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#34483f">
@@ -48,6 +50,9 @@ textarea{min-height:85px;resize:vertical}
 footer{text-align:center;color:#888;font-size:11px;padding:20px}
 </style>
 </head>
+  
+
+
 <body>
 <header>
 <h1>わたしの記録帖</h1>
@@ -72,6 +77,38 @@ footer{text-align:center;color:#888;font-size:11px;padding:20px}
 
 <main>
 <nav>
+  
+<nav>
+<button type="button" id="showList" class="active">記録一覧</button>
+<button type="button" id="showCalendar">カレンダー</button>
+<button type="button" id="showMap">地図</button>
+</nav>
+
+<section id="calendarSection" class="panel" style="display:none">
+<h2>📅 思い出カレンダー</h2>
+<div class="row">
+<button type="button" class="secondary" id="prevMonth">◀ 前月</button>
+<strong id="monthTitle" style="text-align:center;padding:10px"></strong>
+<button type="button" class="secondary" id="nextMonth">翌月 ▶</button>
+</div>
+<div id="calendarGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:15px"></div>
+<div id="dayRecords" style="margin-top:15px"></div>
+</section>
+
+<section id="mapSection" class="panel" style="display:none">
+<h2>📍 思い出マップ</h2>
+<p class="small">施設名やお店の名前を検索するか、地図をタップして位置を指定できます。</p>
+<div class="row">
+<input id="mapSearch" placeholder="施設名・お店・住所">
+<button type="button" class="secondary" id="mapSearchButton">検索</button>
+</div>
+<p class="small" id="mapMessage">地図をタップすると場所を指定できます。</p>
+<div id="memoryMap" style="height:380px;border-radius:12px;z-index:1"></div>
+<p class="small">地図をタップした位置は、現在編集中の記録に設定できます。</p>
+<button type="button" class="primary" id="applyMapPosition">この位置を記録に設定</button>
+<div id="mapRecords" style="margin-top:15px"></div>
+</section>
+
 <button class="active" data-view="all">すべて</button>
 <button data-view="museum">美術館・博物館</button>
 <button data-view="food">食べもの</button>
@@ -394,6 +431,249 @@ $("clearButton").onclick=()=>{
 };
 
 updateDataStatus();
+
+/* ===== カレンダー機能 ===== */
+
+let calendarDate=new Date();
+let selectedDay="";
+let map=null;
+let mapMarker=null;
+let selectedPosition=null;
+let mapPins=[];
+
+function showSection(name){
+  $("calendarSection").style.display=name==="calendar"?"block":"none";
+  $("mapSection").style.display=name==="map"?"block":"none";
+  $("records").style.display=name==="list"?"block":"none";
+  $("search").style.display=name==="list"?"block":"none";
+  $("filterTags").style.display=name==="list"?"flex":"none";
+
+  $("showList").classList.toggle("active",name==="list");
+  $("showCalendar").classList.toggle("active",name==="calendar");
+  $("showMap").classList.toggle("active",name==="map");
+
+  if(name==="calendar")drawCalendar();
+  if(name==="map"){
+    setTimeout(()=>{
+      initMap();
+      map.invalidateSize();
+      drawMapPins();
+    },200);
+  }
+}
+
+$("showList").onclick=()=>showSection("list");
+$("showCalendar").onclick=()=>showSection("calendar");
+$("showMap").onclick=()=>showSection("map");
+
+function drawCalendar(){
+  const year=calendarDate.getFullYear();
+  const month=calendarDate.getMonth();
+
+  $("monthTitle").textContent=
+    year+"年 "+(month+1)+"月";
+
+  const first=new Date(year,month,1);
+  const start=first.getDay();
+  const days=new Date(year,month+1,0).getDate();
+
+  const weekdays=["日","月","火","水","木","金","土"];
+
+  let html=weekdays.map((w,i)=>
+    `<div style="text-align:center;font-size:12px;padding:7px;color:${i===0?"#c55":"#667"}">${w}</div>`
+  ).join("");
+
+  for(let i=0;i<start;i++){
+    html+='<div></div>';
+  }
+
+  for(let d=1;d<=days;d++){
+    const key=year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const items=records.filter(r=>r.date===key);
+    const today=new Date().toLocaleDateString("sv-SE");
+    const active=selectedDay===key;
+
+    html+=`
+      <button type="button" data-day="${key}"
+      style="padding:7px 1px;min-height:52px;border:1px solid ${active?"#456b53":"#e5e5df"};background:${active?"#dce9df":"#fafaf8"};border-radius:9px;font-size:13px">
+      ${d}
+      <div style="font-size:10px;color:#54745a">
+      ${items.map(r=>r.kind==="food"?"●":"◆").join(" ")}
+      </div>
+      ${key===today?'<span style="font-size:9px">今日</span>':""}
+      </button>`;
+  }
+
+  $("calendarGrid").innerHTML=html;
+
+  $("calendarGrid").querySelectorAll("[data-day]").forEach(b=>{
+    b.onclick=()=>{
+      selectedDay=b.dataset.day;
+      drawCalendar();
+      drawDayRecords();
+    };
+  });
+
+  drawDayRecords();
+}
+
+function drawDayRecords(){
+  if(!selectedDay){
+    $("dayRecords").innerHTML='<p class="small">日付を選ぶと、その日の記録が表示されます。</p>';
+    return;
+  }
+
+  const items=records.filter(r=>r.date===selectedDay);
+
+  $("dayRecords").innerHTML=
+    `<h3>${selectedDay} の記録</h3>`+
+    (items.length?items.map(r=>
+      `<div class="record">
+      <span class="kind ${r.kind==="food"?"food":""}">${r.kind==="food"?"食べもの":"美術館・博物館"}</span>
+      <h3>${escapeHTML(r.name)}</h3>
+      <p>${escapeHTML(r.memo||"")}</p>
+      </div>`
+    ).join(""):'<p class="small">この日の記録はありません。</p>');
+}
+
+$("prevMonth").onclick=()=>{
+  calendarDate.setMonth(calendarDate.getMonth()-1);
+  drawCalendar();
+};
+$("nextMonth").onclick=()=>{
+  calendarDate.setMonth(calendarDate.getMonth()+1);
+  drawCalendar();
+};
+
+/* ===== 地図機能 ===== */
+
+function initMap(){
+  if(map)return;
+
+  if(typeof L==="undefined"){
+    $("mapMessage").textContent="地図ライブラリを読み込めませんでした。通信環境を確認してください。";
+    return;
+  }
+
+  map=L.map("memoryMap").setView([35.903,136.166],10);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    attribution:'&copy; OpenStreetMap contributors',
+    maxZoom:19
+  }).addTo(map);
+
+  map.on("click",e=>{
+    setPosition(e.latlng.lat,e.latlng.lng);
+    $("mapMessage").textContent=
+      "選択位置："+e.latlng.lat.toFixed(5)+", "+e.latlng.lng.toFixed(5);
+  });
+}
+
+function setPosition(lat,lng){
+  selectedPosition={lat,lng};
+
+  if(mapMarker)map.removeLayer(mapMarker);
+
+  mapMarker=L.marker([lat,lng]).addTo(map)
+    .bindPopup("選択した場所").openPopup();
+}
+
+$("mapSearchButton").onclick=async()=>{
+  const q=$("mapSearch").value.trim();
+  if(!q)return;
+
+  $("mapMessage").textContent="場所を検索しています...";
+
+  try{
+    const url="https://nominatim.openstreetmap.org/search?format=json&limit=5&q="+encodeURIComponent(q);
+    const response=await fetch(url,{
+      headers:{"Accept-Language":"ja"}
+    });
+    if(!response.ok)throw new Error("検索に失敗しました");
+
+    const results=await response.json();
+
+    if(!results.length){
+      $("mapMessage").textContent="場所が見つかりませんでした。住所を詳しく入力してください。";
+      return;
+    }
+
+    const r=results[0];
+    const lat=Number(r.lat);
+    const lng=Number(r.lon);
+
+    if(!Number.isFinite(lat)||!Number.isFinite(lng))throw new Error("位置情報が正しくありません");
+
+    setPosition(lat,lng);
+    map.setView([lat,lng],16);
+    $("mapMessage").textContent="検索結果："+r.display_name;
+  }catch(e){
+    $("mapMessage").textContent="検索できませんでした。時間をおいて再度お試しください。";
+  }
+};
+
+$("applyMapPosition").onclick=()=>{
+  if(!selectedPosition){
+    alert("先に検索するか、地図をタップしてください。");
+    return;
+  }
+
+  const id=$("editId").value;
+  if(!id){
+    alert("先に記録を保存するか、編集画面を開いてください。");
+    return;
+  }
+
+  records=records.map(r=>
+    String(r.id)===String(id)
+      ?{...r,lat:selectedPosition.lat,lng:selectedPosition.lng}
+      :r
+  );
+
+  if(save()){
+    render();
+    updateDataStatus();
+    alert("地図の位置を保存しました！");
+    drawMapPins();
+  }
+};
+
+function drawMapPins(){
+  if(!map)return;
+
+  mapPins.forEach(p=>map.removeLayer(p));
+  mapPins=[];
+
+  records.filter(r=>
+    Number.isFinite(Number(r.lat))&&
+    Number.isFinite(Number(r.lng))
+  ).forEach(r=>{
+    const marker=L.marker([Number(r.lat),Number(r.lng)]).addTo(map);
+
+    marker.bindPopup(
+      "<strong>"+escapeHTML(r.name)+"</strong><br>"+
+      escapeHTML(r.date)+"<br>"+
+      (r.kind==="food"?"食べもの":"美術館・博物館")
+    );
+
+    mapPins.push(marker);
+  });
+
+  $("mapRecords").innerHTML=
+    "<p class='small'>地図に登録された場所："+mapPins.length+"件</p>";
+}
+
+/* カレンダー・地図の初期設定 */
+
+const originalRender=render;
+render=function(){
+  originalRender();
+  if($("calendarSection").style.display!=="none")drawCalendar();
+  if(map&&$("mapSection").style.display!=="none")drawMapPins();
+};
+
+$("kind").onchange();
+drawCalendar();
 
 </script>
 </body>
