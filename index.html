@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#34483f">
+<title>わたしの記録帖</title>
+<style>
+:root{--green:#34483f;--light:#e8eee8;--cream:#f7f5ef;--ink:#343b35}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",sans-serif}
+header{background:var(--green);color:white;padding:25px 20px 20px}
+header h1{margin:0;font-size:25px}
+header p{font-size:12px;color:#dce5dc;margin:8px 0 18px}
+.stats{display:flex;gap:10px}
+.stat{background:#ffffff19;padding:12px;border-radius:12px;flex:1}
+.stat strong{display:block;font-size:23px}
+.stat span{font-size:11px;color:#e1e8e1}
+main{max-width:700px;margin:auto;padding:16px}
+nav{display:flex;gap:7px;margin-bottom:16px}
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:11px 14px}
+nav button{flex:1;background:#e5e7e1;color:#455349;font-size:13px}
+nav button.active,.primary{background:var(--green);color:white}
+.panel{background:white;border:1px solid #e8e5dc;border-radius:15px;padding:17px;margin-bottom:17px}
+h2{font-size:17px;margin:0 0 15px}
+label{display:block;font-size:13px;font-weight:600;margin:13px 0 6px}
+input,textarea,select{width:100%;padding:12px;border:1px solid #deded5;border-radius:9px;font:inherit;background:white;color:var(--ink)}
+textarea{min-height:85px;resize:vertical}
+.row{display:flex;gap:9px}
+.row>*{flex:1;min-width:0}
+.taglist{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.tag{background:#eef1eb;color:#506352;border-radius:30px;padding:7px 11px;font-size:12px;border:1px solid transparent}
+.tag.selected{background:#dce9df;border-color:#6b8b72}
+.small{font-size:12px;color:#777}
+.primary{width:100%;margin-top:16px}
+.secondary{background:#e9ede8;color:#405546}
+.danger{background:#fff0ed;color:#a34435}
+.record{background:white;border:1px solid #e8e5dc;border-radius:13px;padding:14px;margin:12px 0}
+.record h3{margin:9px 0;font-size:17px}
+.record p{font-size:13px;white-space:pre-wrap;line-height:1.6}
+.record img{width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-top:10px}
+.kind{font-size:11px;background:#e5eee6;color:#49634e;padding:5px 9px;border-radius:20px}
+.kind.food{background:#f8eadf;color:#95603d}
+.actions{display:flex;justify-content:flex-end;gap:7px;margin-top:10px}
+.actions button{font-size:12px;padding:8px 12px}
+#empty{text-align:center;color:#85877f;padding:30px 5px;font-size:13px}
+footer{text-align:center;color:#888;font-size:11px;padding:20px}
+</style>
+</head>
+<body>
+<header>
+<h1>わたしの記録帖</h1>
+<p>訪れた場所、おいしかったもの。大切な思い出を残そう。</p>
+<div class="stats">
+<div class="stat"><strong id="museumCount">0</strong><span>施設の記録</span></div>
+<div class="stat"><strong id="foodCount">0</strong><span>食べもの</span></div>
+<div class="stat"><strong id="totalCount">0</strong><span>思い出の数</span></div>
+</div>
+</header>
+<main>
+<nav>
+<button class="active" data-view="all">すべて</button>
+<button data-view="museum">美術館・博物館</button>
+<button data-view="food">食べもの</button>
+</nav>
+
+<section class="panel">
+<h2 id="formTitle">＋ 新しい思い出を記録</h2>
+<form id="recordForm">
+<input type="hidden" id="editId">
+<label>記録の種類</label>
+<select id="kind">
+<option value="museum">美術館・博物館</option>
+<option value="food">食べもの</option>
+</select>
+<label>名前・タイトル *</label>
+<input id="name" required placeholder="例：○○美術館、季節のパフェ">
+<label>場所・お店</label>
+<input id="place" placeholder="例：福井県福井市">
+<label>日付 *</label>
+<input id="date" type="date" required>
+<div id="priceArea">
+<label>金額（円）</label>
+<input id="price" type="number" min="0" placeholder="例：1500">
+</div>
+<label>感想・メモ</label>
+<textarea id="memo" placeholder="印象に残ったこと、また行きたい理由など"></textarea>
+<label>写真</label>
+<input id="photo" type="file" accept="image/*">
+<p class="small">写真は自動で縮小して保存します。</p>
+<label>タグ</label>
+<div id="tagChoices" class="taglist"></div>
+<div class="row" style="margin-top:10px">
+<input id="newTag" placeholder="新しいタグを作る">
+<button type="button" class="secondary" id="addTag">追加</button>
+</div>
+<button class="primary" type="submit" id="saveButton">記録を保存する</button>
+<button type="button" class="secondary" id="cancelEdit" style="display:none;width:100%;margin-top:8px">編集をキャンセル</button>
+</form>
+</section>
+
+<section>
+<h2>思い出の記録</h2>
+<input id="search" placeholder="🔍 名前・場所・感想・タグを検索">
+<label>タグで絞り込む</label>
+<div id="filterTags" class="taglist"></div>
+<div id="records"></div>
+</section>
+</main>
+<footer>わたしの記録帖 · My Memories</footer>
+
+<script>
+const defaults=[
+"現代アート","日本美術","西洋美術","建築が素敵",
+"企画展","常設展","もう一度行きたい",
+"和食","洋食","スイーツ","カフェ","ランチ",
+"ディナー","ご褒美","リピートしたい",
+"旅行","家族と","一人旅","福井"
+];
+const $=id=>document.getElementById(id);
+let records=[];
+let tags=[];
+let selected=[];
+let filterTag="";
+let view="all";
+let currentPhoto=null;
+
+try{records=JSON.parse(localStorage.getItem("kirokucho_records")||"[]")}catch(e){}
+try{tags=JSON.parse(localStorage.getItem("kirokucho_tags")||"null")||defaults.slice()}catch(e){tags=defaults.slice()}
+
+function save(){
+try{
+localStorage.setItem("kirokucho_records",JSON.stringify(records));
+localStorage.setItem("kirokucho_tags",JSON.stringify(tags));
+return true;
+}catch(e){
+alert("保存容量がいっぱいになりました。写真を減らして再度お試しください。");
+return false;
+}
+}
+function escapeHTML(s){
+return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function drawTags(){
+$("tagChoices").innerHTML=tags.map(t=>
+`<button type="button" class="tag ${selected.includes(t)?"selected":""}" data-tag="${escapeHTML(t)}">${selected.includes(t)?"✓ ":""}${escapeHTML(t)}</button>`
+).join("");
+$("tagChoices").querySelectorAll("button").forEach(b=>{
+b.onclick=()=>{
+const t=b.dataset.tag;
+selected=selected.includes(t)?selected.filter(x=>x!==t):[...selected,t];
+drawTags();
+};
+});
+$("filterTags").innerHTML=
+`<button class="tag ${!filterTag?"selected":""}" data-filter="">すべて</button>`+
+tags.map(t=>`<button class="tag ${filterTag===t?"selected":""}" data-filter="${escapeHTML(t)}">${escapeHTML(t)}</button>`).join("");
+$("filterTags").querySelectorAll("button").forEach(b=>{
+b.onclick=()=>{filterTag=b.dataset.filter;drawTags();render()};
+});
+}
+function render(){
+$("museumCount").textContent=records.filter(r=>r.kind==="museum").length;
+$("foodCount").textContent=records.filter(r=>r.kind==="food").length;
+$("totalCount").textContent=records.length;
+const q=$("search").value.toLowerCase();
+const list=records.filter(r=>{
+const text=[r.name,r.place,r.memo,...r.tags].join(" ").toLowerCase();
+return (view==="all"||r.kind===view)&&(!filterTag||r.tags.includes(filterTag))&&text.includes(q);
+}).sort((a,b)=>b.date.localeCompare(a.date));
+$("records").innerHTML=list.length?list.map(r=>`
+<article class="record">
+<span class="kind ${r.kind==="food"?"food":""}">${r.kind==="food"?"食べもの":"美術館・博物館"}</span>
+<span class="small" style="float:right">${escapeHTML(r.date)}</span>
+<h3>${escapeHTML(r.name)}</h3>
+${r.place?`<div class="small">📍 ${escapeHTML(r.place)}</div>`:""}
+${r.price?`<div class="small">金額：${Number(r.price).toLocaleString()}円</div>`:""}
+${r.memo?`<p>${escapeHTML(r.memo)}</p>`:""}
+${r.photo?`<img src="${r.photo}" alt="記録の写真">`:""}
+<div class="taglist">${r.tags.map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join("")}</div>
+<div class="actions">
+<button class="secondary" data-edit="${r.id}">編集</button>
+<button class="danger" data-delete="${r.id}">削除</button>
+</div>
+</article>`).join(""):'<div id="empty">まだ記録がありません。<br>最初の思い出を登録してみましょう。</div>';
+$("records").querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editRecord(b.dataset.edit));
+$("records").querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>deleteRecord(b.dataset.delete));
+}
+function resetForm(){
+$("recordForm").reset();
+$("editId").value="";
+$("date").value=new Date().toLocaleDateString("sv-SE");
+$("formTitle").textContent="＋ 新しい思い出を記録";
+$("saveButton").textContent="記録を保存する";
+$("cancelEdit").style.display="none";
+selected=[];
+currentPhoto=null;
+drawTags();
+}
+function editRecord(id){
+const r=records.find(x=>String(x.id)===String(id));
+if(!r)return;
+$("editId").value=r.id;
+$("kind").value=r.kind;
+$("name").value=r.name;
+$("place").value=r.place;
+$("date").value=r.date;
+$("price").value=r.price||"";
+$("memo").value=r.memo||"";
+selected=[...r.tags];
+currentPhoto=r.photo||null;
+$("formTitle").textContent="記録を編集";
+$("saveButton").textContent="変更を保存する";
+$("cancelEdit").style.display="block";
+drawTags();
+window.scrollTo({top:0,behavior:"smooth"});
+}
+function deleteRecord(id){
+if(!confirm("この記録を削除しますか？"))return;
+records=records.filter(r=>String(r.id)!==String(id));
+save();render();
+}
+$("addTag").onclick=()=>{
+const t=$("newTag").value.trim();
+if(!t)return;
+if(!tags.includes(t))tags.push(t);
+if(!selected.includes(t))selected.push(t);
+$("newTag").value="";
+save();drawTags();
+};
+$("kind").onchange=()=>{
+$("priceArea").style.display=$("kind").value==="food"?"block":"none";
+};
+$("photo").onchange=()=>{
+const file=$("photo").files[0];
+if(!file)return;
+if(!file.type.startsWith("image/")){alert("画像を選んでください");return}
+const reader=new FileReader();
+reader.onload=e=>{
+const img=new Image();
+img.onload=()=>{
+const canvas=document.createElement("canvas");
+const scale=Math.min(1,1200/Math.max(img.width,img.height));
+canvas.width=Math.round(img.width*scale);
+canvas.height=Math.round(img.height*scale);
+canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+currentPhoto=canvas.toDataURL("image/jpeg",0.72);
+};
+img.src=e.target.result;
+};
+reader.readAsDataURL(file);
+};
+$("recordForm").onsubmit=e=>{
+e.preventDefault();
+const id=$("editId").value;
+const old=records.find(r=>String(r.id)===String(id));
+const r={
+id:id||Date.now().toString(),
+kind:$("kind").value,
+name:$("name").value.trim(),
+place:$("place").value.trim(),
+date:$("date").value,
+price:$("price").value,
+memo:$("memo").value.trim(),
+tags:[...selected],
+photo:currentPhoto||(old?.photo||null)
+};
+if(id)records=records.map(x=>String(x.id)===String(id)?r:x);
+else records.push(r);
+if(save()){resetForm();render();}
+};
+$("cancelEdit").onclick=resetForm;
+$("search").oninput=render;
+document.querySelectorAll("nav button").forEach(b=>{
+b.onclick=()=>{
+view=b.dataset.view;
+document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));
+render();
+};
+});
+$("date").value=new Date().toLocaleDateString("sv-SE");
+drawTags();
+render();
+</script>
+</body>
+</html>
