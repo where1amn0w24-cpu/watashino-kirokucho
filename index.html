@@ -58,6 +58,18 @@ footer{text-align:center;color:#888;font-size:11px;padding:20px}
 <div class="stat"><strong id="totalCount">0</strong><span>思い出の数</span></div>
 </div>
 </header>
+  
+<section class="panel" id="dataManagement">
+<h2>🔐 データ管理・バックアップ</h2>
+<p class="small">大切な思い出をファイルに保存しておきましょう。</p>
+<div class="small" id="dataStatus"></div>
+<button type="button" class="primary" id="backupButton">⬇ バックアップを保存</button>
+<button type="button" class="secondary" id="restoreButton" style="width:100%;margin-top:9px">⬆ バックアップから復元</button>
+<input type="file" id="backupFile" accept=".json,application/json" hidden>
+<button type="button" class="danger" id="clearButton" style="width:100%;margin-top:9px">記録をすべて削除</button>
+<p class="small">※復元すると現在の記録はバックアップの内容に置き換わります。</p>
+</section>
+
 <main>
 <nav>
 <button class="active" data-view="all">すべて</button>
@@ -282,6 +294,107 @@ render();
 $("date").value=new Date().toLocaleDateString("sv-SE");
 drawTags();
 render();
+  
+function updateDataStatus(){
+  $("dataStatus").textContent =
+    "現在の保存件数："+records.length+"件 ／ 登録タグ："+tags.length+"個";
+}
+
+$("backupButton").onclick=()=>{
+  const data={
+    app:"わたしの記録帖",
+    version:1,
+    exportedAt:new Date().toISOString(),
+    records:records,
+    tags:tags
+  };
+
+  const blob=new Blob(
+    [JSON.stringify(data,null,2)],
+    {type:"application/json"}
+  );
+
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="わたしの記録帖_backup_"+
+    new Date().toLocaleDateString("sv-SE")+".json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+};
+
+$("restoreButton").onclick=()=>{
+  $("backupFile").click();
+};
+
+$("backupFile").onchange=async e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+
+  try{
+    if(file.size>50*1024*1024){
+      throw new Error("ファイルが大きすぎます。");
+    }
+
+    const data=JSON.parse(await file.text());
+
+    if(
+      data.app!=="わたしの記録帖" ||
+      !Array.isArray(data.records) ||
+      !Array.isArray(data.tags) ||
+      !data.records.every(r=>
+        r && typeof r.name==="string" &&
+        ["museum","food"].includes(r.kind) &&
+        Array.isArray(r.tags)
+      )
+    ){
+      throw new Error("正しいバックアップファイルではありません。");
+    }
+
+    if(!confirm(
+      "現在の記録をバックアップの内容に置き換えます。\n"+
+      "復元する記録："+data.records.length+"件\n"+
+      "よろしいですか？"
+    ))return;
+
+    const oldRecords=records;
+    const oldTags=tags;
+
+    records=data.records;
+    tags=data.tags;
+
+    if(save()){
+      resetForm();
+      render();
+      updateDataStatus();
+      alert("復元しました！");
+    }else{
+      records=oldRecords;
+      tags=oldTags;
+    }
+
+  }catch(err){
+    alert("復元できませんでした："+err.message);
+  }finally{
+    e.target.value="";
+  }
+};
+
+$("clearButton").onclick=()=>{
+  if(!confirm("本当にすべての記録を削除しますか？"))return;
+  if(!confirm("この操作は取り消せません。削除してよいですか？"))return;
+
+  records=[];
+  if(save()){
+    resetForm();
+    render();
+    updateDataStatus();
+    alert("すべての記録を削除しました。");
+  }
+};
+
+updateDataStatus();
+
 </script>
 </body>
 </html>
