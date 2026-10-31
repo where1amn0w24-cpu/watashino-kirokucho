@@ -8,6 +8,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#34483f">
 <title>わたしの記録帖</title>
+  
+
+
 <style>
 :root{--green:#34483f;--light:#e8eee8;--cream:#f7f5ef;--ink:#343b35}
 *{box-sizing:border-box}
@@ -48,6 +51,29 @@ textarea{min-height:85px;resize:vertical}
 .actions button{font-size:12px;padding:8px 12px}
 #empty{text-align:center;color:#85877f;padding:30px 5px;font-size:13px}
 footer{text-align:center;color:#888;font-size:11px;padding:20px}
+/* 地図をiPhoneで見やすくする */
+#mapSection {
+  width: 100%;
+  padding: 12px;
+}
+
+#memoryMap {
+  width: 100% !important;
+  height: 65vh !important;
+  min-height: 480px !important;
+  max-height: 700px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+#memoryMap .leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+.leaflet-container {
+  font-family: -apple-system, sans-serif;
+}
 </style>
 </head>
   
@@ -454,11 +480,15 @@ function showSection(name){
 
   if(name==="calendar")drawCalendar();
   if(name==="map"){
-    setTimeout(()=>{
-      initMap();
-      map.invalidateSize();
-      drawMapPins();
-    },200);
+
+setTimeout(()=>{
+  initMap();
+  if(map){
+    map.invalidateSize(true);
+    drawMapPins();
+  }
+},500);
+
   }
 }
 
